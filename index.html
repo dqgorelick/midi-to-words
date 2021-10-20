@@ -1,0 +1,125 @@
+<html>
+
+<head>
+    <title>MIDI TO WORDS</title>
+    <meta charset="utf-8">
+    <meta content="text/html">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Courier+Prime:wght@700&display=swap" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="https://cdn.jsdelivr.net/npm/webmidi@2.0.0"></script>
+    <style>
+    html,
+    body {
+        margin: 0;
+        background-color: #000;
+        color: #FFF;
+        font-family: Courier Prime, Helvetica, sans-serif;
+        height: 100vh;
+    }
+
+
+    .wrapper {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        max-width: 50vw;
+        -webkit-transform: translate(-50%, -50%);
+        transform: translate(-50%, -50%);
+    }
+
+    #content {
+      font-size: 40px;
+      font-weight: 1000;
+    }
+    </style>
+</head>
+
+<body>
+    <div class="wrapper">
+      <p id="content"></p>
+    </div>
+</body>
+<script type="text/javascript">
+
+
+(function () {
+
+'use strict'
+
+var midiMapping = {
+  '36': 'automatic merge failed',
+  '37': 'fix conflicts and then commit the result.',
+}
+
+// midi listener
+var connected = [];
+
+var getDeviceById = function(id){
+const index = connected.findIndex(d => d.id === id)
+return connected[index]
+}
+
+var removeDevice = function(id) {
+const index = connected.findIndex(d => d.id === id)
+connected.splice(index, 1)
+}
+
+var addMidiListerner = function(inputDevice) {
+var device = WebMidi.getInputById(inputDevice.id);
+connected.push(device)
+device.addListener('noteon', "all", function(e) {
+    var midi = e.note.number   
+    console.log(midiMapping[e.note.number])
+    document.querySelectorAll('#content')[0].innerHTML = midiMapping[e.note.number];
+    // startMidi(midi, e.velocity)
+    // activateNote(e.note.number)
+});
+
+device.addListener('noteoff', "all", function(e) {
+    var midi = e.note.number;
+    document.querySelectorAll('#content')[0].innerHTML = ''
+    // endMidi(midi)
+    // disableNote(e.note.number)
+  });
+}
+
+WebMidi.enable(function(err) {
+if (!err){
+  setTimeout(function() {
+    if (WebMidi.inputs) {
+      WebMidi.inputs.forEach(function(input) {
+        addMidiListerner(input)
+      })
+    }
+    WebMidi.addListener('connected', function(connectedDevice) {
+      var device = connectedDevice
+      if (connectedDevice.port) {
+        device = connectedDevice.port
+      }
+      if (device.type === 'input') {
+        addMidiListerner(device)
+      }
+    })
+
+    WebMidi.addListener('disconnected', function(disconnected) {
+      var device = getDeviceById(disconnected.id)
+      if (disconnected.port) {
+        device = getDeviceById(disconnected.port.id)
+      }
+      if (device){
+        device.removeListener('noteon')
+        device.removeListener('noteoff')
+        removeDevice(disconnected.id)
+      }
+    })
+  }, 100)
+}
+})
+
+
+})();
+</script>
+</html>
